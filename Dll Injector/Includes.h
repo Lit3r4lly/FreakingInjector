@@ -7,9 +7,11 @@
 #include <Windows.h>
 #include <TlHelp32.h>
 
-// file headers
-#include "Simple Injector.h"
+// injector file headers
 #include "Process Lookup.h"
+#include "Simple Injector.h"
+#include "Manual Mapping Injector.h"
+#include "Reflective Injector.h"
 
 // defines
 #define SIMPLE_INJECTION 1
