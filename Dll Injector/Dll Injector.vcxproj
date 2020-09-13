@@ -140,12 +140,16 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.c" />
+    <ClCompile Include="Manual Mapping Injector.c" />
     <ClCompile Include="Process Lookup.c" />
+    <ClCompile Include="Reflective Injector.c" />
     <ClCompile Include="Simple Injector.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Includes.h" />
+    <ClInclude Include="Manual Mapping Injector.h" />
     <ClInclude Include="Process Lookup.h" />
+    <ClInclude Include="Reflective Injector.h" />
     <ClInclude Include="Simple Injector.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

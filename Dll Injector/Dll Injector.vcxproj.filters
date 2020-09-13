@@ -24,15 +24,27 @@
     <ClCompile Include="main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Manual Mapping Injector.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Reflective Injector.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Process Lookup.h">
+    <ClInclude Include="Includes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Simple Injector.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Includes.h">
+    <ClInclude Include="Process Lookup.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Manual Mapping Injector.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Reflective Injector.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
