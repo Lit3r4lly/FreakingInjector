@@ -20,11 +20,15 @@ int simpleInjectionMethod(int ProcessId, char* dllPath) {
 	);
 	if (!dllPathAddress) {
 		// failed to allocate mem
+		CloseHandle(hProcess);
 		return FALSE;
 	}
 
 	if (WriteProcessMemory(hProcess, dllPathAddress, (LPCVOID)dllPath, strlen(dllPath) + 1, 0) == 0) {
 		// failed to write process memory
+
+		VirtualFreeEx(hProcess, dllPathAddress, 0, MEM_RELEASE);
+		CloseHandle(hProcess);
 		return FALSE;
 	}
 
@@ -37,12 +41,15 @@ int simpleInjectionMethod(int ProcessId, char* dllPath) {
 	);
 	if (hThread == NULL) {
 		// failed to create the remote thread
+
+		VirtualFreeEx(hProcess, dllPathAddress, 0, MEM_RELEASE);
+		CloseHandle(hProcess);
 		return FALSE;
 	}
 
 	WaitForSingleObject(hThread, INFINITE);
 
-	VirtualFreeEx(hProcess, dllPathAddress, strlen(dllPath) + 1, MEM_FREE);
+	VirtualFreeEx(hProcess, dllPathAddress, 0, MEM_RELEASE);
 	CloseHandle(hProcess);
 	return TRUE;
 }
