@@ -2,8 +2,8 @@
 
 int simpleInjectionMethod(int ProcessId, char* dllPath) {
 	HANDLE hProcess			= 0;
-	LPVOID dllPathAddress	= 0;
 	HANDLE hThread			= 0;
+	LPVOID dllPathAddress	= 0;
 
 	hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, ProcessId);
 	if (hProcess == NULL) {
