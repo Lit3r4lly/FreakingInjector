@@ -1,5 +1,5 @@
 # IN-PROGRESS (didnt finished yet)
-## fully readme will be when the injector will finished
+## fully readme will be added when the injector will be finished
 
 # Dllinjector
 This project focuses on dll injection with bunch of diffrent methods.

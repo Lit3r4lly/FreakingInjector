@@ -1,11 +1,11 @@
 #include "Includes.h"
 
-int simpleInjectionMethod(int ProcessId, char* dllPath) {
+int simpleInjectionMethod(int processId, char* dllPath) {
 	HANDLE hProcess			= 0;
 	HANDLE hThread			= 0;
 	LPVOID dllPathAddress	= 0;
 
-	hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, ProcessId);
+	hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
 	if (hProcess == NULL) {
 		// failed to create handle with the process
 		return FALSE;
@@ -16,7 +16,7 @@ int simpleInjectionMethod(int ProcessId, char* dllPath) {
 		NULL,
 		strlen(dllPath) + 1,
 		MEM_COMMIT,
-		PAGE_READWRITE
+		PAGE_EXECUTE_READWRITE
 	);
 	if (!dllPathAddress) {
 		// failed to allocate mem

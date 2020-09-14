@@ -1,16 +1,24 @@
 #include "Includes.h"
 
 int manualMappingInjectionMethod(int processId, char* dllPath) {
+	HANDLE hProcess = 0;
+
 	BYTE					*pSrcData				= NULL;
 	IMAGE_DOS_HEADER		*pDosHeader				= NULL;
 	IMAGE_NT_HEADERS		*pOldNtHeader			= NULL;
 	IMAGE_OPTIONAL_HEADER	*pOldOptHeader			= NULL;
 	IMAGE_FILE_HEADER		*pOldFileHeader			= NULL;
 	IMAGE_SECTION_HEADER	*pSectionHeader			= NULL;
-	BYTE					*pTargetModBaseAddr		= NULL;
+	BYTE					*pTargetAddr			= NULL;
 
 	FILE				*pFile			= NULL;
 	unsigned int		fileSize		= 0;
+
+	hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
+	if (hProcess == NULL) {
+		// failed to create handle with the process
+		return FALSE;
+	}
 
 	pFile = fopen(dllPath, "wb");
 	if (pFile == NULL) {
@@ -64,9 +72,10 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 		free(pSrcData);
 		return FALSE;
 	}
-
-	pSectionHeader = (IMAGE_SECTION_HEADER)pOldNtHeader;
 	
+	// allocating memory in the target process for writing the dll
+	// first trying to allocate in the image base of the process
+	pTargetAddr = (BYTE*)VirtualAllocEx(hProcess, (void*)pOldOptHeader->ImageBase, pOldOptHeader->SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 
 	free(pSrcData);
 	return TRUE;
