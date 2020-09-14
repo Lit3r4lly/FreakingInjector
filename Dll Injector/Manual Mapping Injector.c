@@ -3,9 +3,10 @@
 int manualMappingInjectionMethod(int processId, char* dllPath) {
 	BYTE					*pSrcData				= NULL;
 	IMAGE_DOS_HEADER		*pDosHeader				= NULL;
-	IMAGE_NT_HEADERS		*pOldNtHeader				= NULL;
-	IMAGE_OPTIONAL_HEADER	*pOldOptHeader				= NULL;
-	IMAGE_FILE_HEADER	*pOldFileHeader			= NULL;
+	IMAGE_NT_HEADERS		*pOldNtHeader			= NULL;
+	IMAGE_OPTIONAL_HEADER	*pOldOptHeader			= NULL;
+	IMAGE_FILE_HEADER		*pOldFileHeader			= NULL;
+	IMAGE_SECTION_HEADER	*pSectionHeader			= NULL;
 	BYTE					*pTargetModBaseAddr		= NULL;
 
 	FILE				*pFile			= NULL;
@@ -50,7 +51,6 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 		printf("[!] Invalid executable(dll) file \nNote: there is no MZ signature at the start of the file");
 		
 		free(pSrcData);
-		fclose(pFile);
 		return FALSE;
 	}
 
@@ -59,13 +59,16 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 	pOldFileHeader = &pOldNtHeader->FileHeader;
 
 	if (pOldFileHeader->Machine != IMAGE_FILE_MACHINE_AMD64) {
-		printf("[!] Dll didnt compiled to 64 bit \nNote: compile it again to 64 bit");
+		printf("[!] Dll didnt compiled to 64 bit \nNote: compile it again to 64 bit (injector support only 64 bit)");
 
 		free(pSrcData);
-		fclose(pFile);
 		return FALSE;
 	}
+
+	pSectionHeader = (IMAGE_SECTION_HEADER)pOldNtHeader;
+	
 
 	free(pSrcData);
 	return TRUE;
 }
+
