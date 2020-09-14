@@ -2,7 +2,7 @@
 
 int main(int argc, char **argv) {
 	char	processName[MAX_PROCESS_NAME_LEN]	= { 0 };
-	char	dllFilePath[MAX_DLL_PATH_LEN]		= { 0 };
+	char	dllPath[MAX_DLL_PATH_LEN]		= { 0 };
 	int		processId							= 0;
 	int		injectionStatus						= 0;
 	int		injectionMethod						= 0;
@@ -24,7 +24,12 @@ int main(int argc, char **argv) {
 		printf("[!] Dll path length is too long!\n");
 		return 0;
 	}
-	strcpy(dllFilePath, argv[2]);
+	strcpy(dllPath, argv[2]);
+
+	if (!GetFileAttributesA(dllPath)) {
+		printf("[!] Dll file dosent exist \nNote: check if the path spelled out correctly");
+		return 0;
+	}
 
 	/* -- Get processId for inject dll  -- */
 
@@ -45,7 +50,7 @@ int main(int argc, char **argv) {
 	{
 	case SIMPLE_INJECTION:
 		printf("[^] Simple dll injection starting...\n");
-		injectionStatus = simpleInjectionMethod(processId, dllFilePath);
+		injectionStatus = simpleInjectionMethod(processId, dllPath);
 		break;
 
 	case MANUAL_MAPPING_INJECTION:
