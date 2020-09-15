@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
 
 	case MANUAL_MAPPING_INJECTION:
 		printf("[^] Manual mapping dll injection starting...\n");
-		// injectionStatus = manualMappingInjectionMethod();
+		injectionStatus = manualMappingInjectionMethod(processId, dllPath);
 		break;
 
 	case REFLECTIVE_INJECTION:

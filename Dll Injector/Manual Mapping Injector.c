@@ -10,7 +10,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 	BYTE					*pTargetAddr			= NULL;
 
 	FILE				*pFile			= NULL;
-	unsigned int		fileSize		= 0;
+	size_t		fileSize		= 0;
 
 	unsigned int i = 0;
 	HANDLE hProcess = NULL;
@@ -48,7 +48,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 	}
 
 	// reading the dll file into memory for analysis
-	pSrcDllData = (BYTE*)malloc(fileSize);
+	pSrcDllData = (BYTE*)malloc(fileSize * sizeof(char));
 	if (pSrcDllData == NULL) {
 		printf("[!] Failed to allocate memory for the dll data\n");
 		
@@ -56,7 +56,13 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 		return FALSE;
 
 	}
-	fread(pSrcDllData, sizeof(BYTE*), fileSize, pFile);
+
+	if (!fread(pSrcDllData, sizeof(BYTE*), fileSize, pFile)) {
+		printf("[!] Didnt success to read the dll content.\n");
+
+		fclose(pFile);
+		return FALSE;
+	}
 	fclose(pFile);
 
 	// starting analysis the dll
@@ -222,7 +228,7 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 
 	if (loaderParams->NtHeaders->OptionalHeader.AddressOfEntryPoint) {
 		dllmain entryPointOfDll = (dllmain)((LPBYTE)loaderParams->ImageBase + loaderParams->NtHeaders->OptionalHeader.AddressOfEntryPoint);
-		return entryPointOfDll((HMODULE)loaderParams->ImageBase, DLL_PROCESS_ATTACH, NULL);
+		return (DWORD)entryPointOfDll((HMODULE)loaderParams->ImageBase, DLL_PROCESS_ATTACH, NULL);
 	}
 
 	return TRUE;
