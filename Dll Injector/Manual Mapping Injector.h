@@ -2,9 +2,6 @@
 
 #define PAGE_SIZE 0x1000
 
-int manualMappingInjectionMethod(int processId, char* dllPath);
-void loaderShellcode(loaderData loaderParams);
-
 // some declarations for iat resolving
 typedef HMODULE(__stdcall* pLoadLibraryA)(LPCSTR);
 typedef FARPROC(__stdcall* pGetProcAddress)(HMODULE, LPCSTR);
@@ -23,3 +20,6 @@ typedef struct loaderData
 	pGetProcAddress fnGetProcAddress;
 
 } loaderData;
+
+int manualMappingInjectionMethod(int processId, char* dllPath);
+DWORD __stdcall loaderShellcode(loaderData* loaderParams);

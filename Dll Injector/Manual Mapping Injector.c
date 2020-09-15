@@ -25,7 +25,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 		return FALSE;
 	}
 
-	pFile = fopen(dllPath, "wb");
+	pFile = fopen(dllPath, "rb");
 	if (pFile == NULL) {
 		printf("[!] Failed to open the dll file \n");
 
@@ -38,7 +38,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 	rewind(pFile);
 
 	// if there is nothing except PE headers
-	if (fileSize < 0x1000) {
+	if (fileSize < PAGE_SIZE) {
 		printf("[!] File size is invalid \nNote: there is nothin else except PE headers \n");
 
 		fclose(pFile);
@@ -93,8 +93,6 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 		}
 	}
 
-	//entryPoint = (LPTHREAD_START_ROUTINE)(pTargetAddr + pOldOptHeader->AddressOfEntryPoint);
-
 	// writing sections to memory (target process)
 	pSectionHeader = IMAGE_FIRST_SECTION(pOldNtHeader);
 	for (i = 0; i != pOldFileHeader->NumberOfSections; i++, pSectionHeader++) {
@@ -112,10 +110,10 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 
 	// setting loader params for starting relocating and resolving iat
 	loaderParams.ImageBase = pTargetAddr;
-	loaderParams.NtHeaders = (PIMAGE_NT_HEADERS)(pTargetAddr + pDosHeader->e_lfanew);
+	loaderParams.NtHeaders = (PIMAGE_NT_HEADERS)((LPBYTE)pTargetAddr + pDosHeader->e_lfanew);
 
-	loaderParams.BaseReloc = (PIMAGE_BASE_RELOCATION)(pTargetAddr + pOldNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].VirtualAddress);
-	loaderParams.ImportDirectory = (PIMAGE_BASE_RELOCATION)(pTargetAddr + pOldNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress);
+	loaderParams.BaseReloc = (PIMAGE_BASE_RELOCATION)((LPBYTE)pTargetAddr + pOldNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].VirtualAddress);
+	loaderParams.ImportDirectory = (PIMAGE_BASE_RELOCATION)((LPBYTE)pTargetAddr + pOldNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress);
 
 	loaderParams.fnLoadLibraryA = LoadLibraryA;
 	loaderParams.fnGetProcAddress = GetProcAddress;
@@ -127,6 +125,40 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 	return TRUE;
 }
 
-void loaderShellcode(loaderData loaderParams) {
+DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
+	unsigned int	i						= 0;
+	unsigned int	amountOfEntries			= 0;
+	PWORD			pRelativeRelocInfo		= 0;
+	PDWORD			ptr						= 0;
 
+	PIMAGE_BASE_RELOCATION		 pBaseReloc			= loaderParams->BaseReloc;
+	PIMAGE_IMPORT_DESCRIPTOR	 pImportDesc		= loaderParams->ImportDirectory;
+
+	// checks if needs a relocation (if the allocation made successfuly in the image base, flex on your friends)
+	DWORD deltaOfBase = (DWORD)((LPBYTE)loaderParams->ImageBase - loaderParams->NtHeaders->OptionalHeader.ImageBase);
+
+	// relocating (if needed) addresses
+	if (deltaOfBase) {
+		if (loaderParams->NtHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].Size) {
+			while (pBaseReloc->VirtualAddress) {
+				// getting the amount of the entries for specific block
+				amountOfEntries = (pBaseReloc->SizeOfBlock - sizeof(IMAGE_BASE_RELOCATION)) / sizeof(WORD);
+				pRelativeRelocInfo = (PWORD)(pBaseReloc + 1); // gets the entry info (offset + type)
+
+				for (i = 0; i < amountOfEntries; i++) {
+					if (pRelativeRelocInfo[i]) {
+						// getting the pointer to the rva
+						ptr = (PDWORD)((LPBYTE)loaderParams->ImageBase + pBaseReloc->VirtualAddress + (pRelativeRelocInfo[i] & 0xFFF));
+						*ptr += deltaOfBase;
+					}
+				}
+			}
+			pBaseReloc = (PIMAGE_BASE_RELOCATION)((LPBYTE)pBaseReloc + pBaseReloc->SizeOfBlock);
+		}
+	}
+
+	// resolving dll imports
+	if (loaderParams->NtHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].Size) {
+
+	}
 }
