@@ -1,9 +1,7 @@
 #include "Includes.h"
 
 int manualMappingInjectionMethod(int processId, char* dllPath) {
-	HANDLE hProcess = 0;
-
-	BYTE					*pSrcDllData				= NULL;
+	BYTE					*pSrcDllData			= NULL;
 	IMAGE_DOS_HEADER		*pDosHeader				= NULL;
 	IMAGE_NT_HEADERS		*pOldNtHeader			= NULL;
 	IMAGE_OPTIONAL_HEADER	*pOldOptHeader			= NULL;
@@ -13,6 +11,13 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 
 	FILE				*pFile			= NULL;
 	unsigned int		fileSize		= 0;
+
+	unsigned int i = 0;
+	HANDLE hProcess = 0;
+	LPTHREAD_START_ROUTINE entryPoint = 0;
+
+	loaderData loaderParams = { 0 };
+	PVOID loaderMemory = 0;
 
 	hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
 	if (hProcess == NULL) {
@@ -88,9 +93,40 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 		}
 	}
 
-	// write sections to memory (target process)
+	//entryPoint = (LPTHREAD_START_ROUTINE)(pTargetAddr + pOldOptHeader->AddressOfEntryPoint);
 
+	// writing sections to memory (target process)
+	pSectionHeader = IMAGE_FIRST_SECTION(pOldNtHeader);
+	for (i = 0; i != pOldFileHeader->NumberOfSections; i++, pSectionHeader++) {
+		if (!WriteProcessMemory(hProcess, pTargetAddr + pSectionHeader->VirtualAddress, pSrcDllData + pSectionHeader->PointerToRawData, pSectionHeader->SizeOfRawData, NULL)) {
+			printf("[!] Failed to write the sections into the process\n");
+
+			VirtualFreeEx(hProcess, pTargetAddr, 0, MEM_RELEASE);
+			free(pSrcDllData);
+			return FALSE;
+		}
+	}
+
+	// allocate memory for the loader (params + code)
+	loaderMemory = VirtualAllocEx(hProcess, NULL, PAGE_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+
+	// setting loader params for starting relocating and resolving iat
+	loaderParams.ImageBase = pTargetAddr;
+	loaderParams.NtHeaders = (PIMAGE_NT_HEADERS)(pTargetAddr + pDosHeader->e_lfanew);
+
+	loaderParams.BaseReloc = (PIMAGE_BASE_RELOCATION)(pTargetAddr + pOldNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].VirtualAddress);
+	loaderParams.ImportDirectory = (PIMAGE_BASE_RELOCATION)(pTargetAddr + pOldNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress);
+
+	loaderParams.fnLoadLibraryA = LoadLibraryA;
+	loaderParams.fnGetProcAddress = GetProcAddress;
+
+
+	VirtualFreeEx(hProcess, loaderMemory, 0, MEM_RELEASE);
+	VirtualFreeEx(hProcess, pTargetAddr, 0, MEM_RELEASE);
 	free(pSrcDllData);
 	return TRUE;
 }
 
+void loaderShellcode(loaderData loaderParams) {
+
+}

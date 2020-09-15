@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <winternl.h>
 #include <Windows.h>
 #include <TlHelp32.h>
 
