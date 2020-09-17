@@ -9,8 +9,8 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 	IMAGE_SECTION_HEADER	*pSectionHeader			= NULL;
 	BYTE					*pTargetAddr			= NULL;
 
-	FILE				*pFile			= NULL;
-	size_t		fileSize		= 0;
+	FILE		*pFile			= NULL;
+	long		fileSize		= 0;
 
 	unsigned int i = 0;
 	HANDLE hProcess = NULL;
@@ -27,7 +27,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 		return FALSE;
 	}
 
-	pFile = fopen(dllPath, "rb");
+	pFile = fopen("C:\\check\\DllToInjectIn.dll", "rb");
 	if (pFile == NULL) {
 		printf("[!] Failed to open the dll file \n");
 
@@ -35,9 +35,9 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 	}
 
 	// getting the file size (classic c moment)
-	fseek(pFile, 0L, SEEK_END);
+	fseek(pFile, 0, SEEK_END);
 	fileSize = ftell(pFile);
-	rewind(pFile);
+	fseek(pFile, 0, SEEK_SET);
 
 	// if there is nothing except PE headers
 	if (fileSize < PAGE_SIZE) {
@@ -48,16 +48,15 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 	}
 
 	// reading the dll file into memory for analysis
-	pSrcDllData = (BYTE*)malloc(fileSize * sizeof(char));
+	pSrcDllData = (BYTE*)malloc(fileSize * sizeof(BYTE));
 	if (pSrcDllData == NULL) {
 		printf("[!] Failed to allocate memory for the dll data\n");
 		
 		fclose(pFile);
 		return FALSE;
-
 	}
 
-	if (!fread(pSrcDllData, sizeof(BYTE*), fileSize, pFile)) {
+	if (!fread(pSrcDllData, 1, fileSize, pFile) ) {
 		printf("[!] Didnt success to read the dll content.\n");
 
 		fclose(pFile);
