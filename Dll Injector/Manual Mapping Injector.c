@@ -134,9 +134,9 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 
 	// write params and loader into target process memory
 	WriteProcessMemory(hProcess, loaderMemory, &loaderParams, sizeof(loaderData), NULL);
-	WriteProcessMemory(hProcess, (PVOID)((loaderData*)loaderMemory + 1), loaderShellcode, (DWORD)loaderShellcode, NULL);
+	WriteProcessMemory(hProcess, (PVOID)((loaderData*)loaderMemory + 1), loaderShellcode, PAGE_SIZE - sizeof(loaderParams), NULL);
 
-	hThread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)((loaderData*)loaderShellcode + 1), loaderMemory, 0, NULL);
+	hThread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)((loaderData*)loaderMemory + 1), loaderMemory, 0, NULL);
 	if (hThread == NULL) {
 		printf("[!] Creating remote thread failed \n");
 
@@ -148,6 +148,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 
 	WaitForSingleObject(hThread, INFINITE);
 
+	CloseHandle(hThread);
 	VirtualFreeEx(hProcess, loaderMemory, 0, MEM_RELEASE);
 	VirtualFreeEx(hProcess, pTargetAddr, 0, MEM_RELEASE);
 	free(pSrcDllData);
@@ -161,7 +162,7 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 	PDWORD			pRva					= 0;
 
 	PIMAGE_BASE_RELOCATION		 pBaseReloc			= loaderParams->BaseReloc;
-	PIMAGE_IMPORT_DESCRIPTOR	 pImportDesc		= loaderParams->ImportDirectory;
+	PIMAGE_IMPORT_DESCRIPTOR	 pImportDesc		= NULL;
 
 	// checks if needs a relocation (if the allocation made successfuly in the image base, flex on your friends)
 	DWORD deltaOfBase = (DWORD)((LPBYTE)loaderParams->ImageBase - loaderParams->NtHeaders->OptionalHeader.ImageBase);
@@ -177,57 +178,65 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 		if (loaderParams->NtHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].Size) {
 			while (pBaseReloc->VirtualAddress) {
 				// getting the amount of the entries for specific block
-				amountOfEntries = (pBaseReloc->SizeOfBlock - sizeof(IMAGE_BASE_RELOCATION)) / sizeof(WORD);
-				pRelativeRelocInfo = (PWORD)(pBaseReloc + 1); // gets the entry info (offset + type)
+				if (pBaseReloc->SizeOfBlock >= sizeof(PIMAGE_BASE_RELOCATION)) {
 
-				for (i = 0; i < amountOfEntries; i++) {
-					if (pRelativeRelocInfo[i]) {
-						// getting the pointer to the rva
-						pRva = (PDWORD)((LPBYTE)loaderParams->ImageBase + pBaseReloc->VirtualAddress + (pRelativeRelocInfo[i] & 0xFFF));
-						*pRva += deltaOfBase;
+					amountOfEntries = (pBaseReloc->SizeOfBlock - sizeof(IMAGE_BASE_RELOCATION)) / sizeof(WORD);
+					pRelativeRelocInfo = (PWORD)(pBaseReloc + 1); // gets the entry info (offset + type)
+
+					for (i = 0; i < amountOfEntries; i++) {
+						if (pRelativeRelocInfo[i]) {
+							// getting the pointer to the rva
+							pRva = (PDWORD)((LPBYTE)loaderParams->ImageBase + pBaseReloc->VirtualAddress + (pRelativeRelocInfo[i] & 0xFFF));
+							*pRva += deltaOfBase;
+						}
 					}
 				}
+				pBaseReloc = (PIMAGE_BASE_RELOCATION)((LPBYTE)pBaseReloc + pBaseReloc->SizeOfBlock);
 			}
-			pBaseReloc = (PIMAGE_BASE_RELOCATION)((LPBYTE)pBaseReloc + pBaseReloc->SizeOfBlock);
 		}
 	}
 
 	// resolving dll imports
-	if (loaderParams->NtHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].Size) {
-		FirstThunk = (PIMAGE_THUNK_DATA)((LPBYTE)loaderParams->ImageBase + pImportDesc->FirstThunk);
-		OriginalFirstThunk = (PIMAGE_THUNK_DATA)((LPBYTE)loaderParams->ImageBase + pImportDesc->OriginalFirstThunk);
+	pImportDesc = loaderParams->ImportDirectory;
 
-		hMod = loaderParams->fnLoadLibraryA((LPCSTR)loaderParams->ImageBase + pImportDesc->Name);
-		if (!hMod) {
-			return FALSE;
-		}
+	while (pImportDesc->Characteristics) {
+			FirstThunk = (PIMAGE_THUNK_DATA)((LPBYTE)loaderParams->ImageBase + pImportDesc->FirstThunk);
+			OriginalFirstThunk = (PIMAGE_THUNK_DATA)((LPBYTE)loaderParams->ImageBase + pImportDesc->OriginalFirstThunk);
 
-		while (OriginalFirstThunk->u1.AddressOfData) {
-			if (OriginalFirstThunk->u1.Ordinal & IMAGE_ORDINAL_FLAG64) {
-				modFunc = (DWORD)loaderParams->fnGetProcAddress(hMod, (LPCSTR)(OriginalFirstThunk->u1.Ordinal & 0xFFFF));
-				if (!modFunc) {
-					return FALSE;
-				}
-
-				FirstThunk->u1.Function = modFunc;
-			} else {
-				pImportByName = (PIMAGE_IMPORT_BY_NAME)((LPBYTE)loaderParams->ImageBase + OriginalFirstThunk->u1.AddressOfData);
-				modFunc = (DWORD)loaderParams->fnGetProcAddress(hMod, (LPCSTR)pImportByName->Name);
-				if (!modFunc) {
-					return FALSE;
-				}
-
-				FirstThunk->u1.Function = modFunc;
+			hMod = loaderParams->fnLoadLibraryA((LPCSTR)loaderParams->ImageBase + pImportDesc->Name);
+			if (!hMod) {
+				return FALSE;
 			}
-			OriginalFirstThunk++;
-			FirstThunk++;
-		}
-		pImportDesc++;
+
+			while (OriginalFirstThunk->u1.AddressOfData) {
+				if (OriginalFirstThunk->u1.Ordinal & IMAGE_ORDINAL_FLAG64) {
+					modFunc = (DWORD)loaderParams->fnGetProcAddress(hMod, (LPCSTR)(OriginalFirstThunk->u1.Ordinal & 0xFFFF));
+					if (!modFunc) {
+						return FALSE;
+					}
+
+					FirstThunk->u1.Function = modFunc;
+				}
+				else {
+					pImportByName = (PIMAGE_IMPORT_BY_NAME)((LPBYTE)loaderParams->ImageBase + OriginalFirstThunk->u1.AddressOfData);
+					modFunc = (DWORD)loaderParams->fnGetProcAddress(hMod, (LPCSTR)pImportByName->Name);
+					if (!modFunc) {
+						return FALSE;
+					}
+
+					FirstThunk->u1.Function = modFunc;
+				}
+				OriginalFirstThunk++;
+				FirstThunk++;
+			}
+			pImportDesc++;
 	}
 
+	//__debugbreak();
 	if (loaderParams->NtHeaders->OptionalHeader.AddressOfEntryPoint) {
-		dllmain entryPointOfDll = (dllmain)((LPBYTE)loaderParams->ImageBase + loaderParams->NtHeaders->OptionalHeader.AddressOfEntryPoint);
-		return (DWORD)entryPointOfDll((HMODULE)loaderParams->ImageBase, DLL_PROCESS_ATTACH, NULL);
+		//dllmain entryPointOfDll = (dllmain)((LPBYTE)loaderParams->ImageBase + loaderParams->NtHeaders->OptionalHeader.AddressOfEntryPoint);
+		//__debugbreak();
+		//return entryPointOfDll((HMODULE)loaderParams->ImageBase, DLL_PROCESS_ATTACH, NULL);
 	}
 
 	return TRUE;
