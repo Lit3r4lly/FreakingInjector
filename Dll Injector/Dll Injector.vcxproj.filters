@@ -30,6 +30,9 @@
     <ClCompile Include="Reflective Injector.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Windows Hook.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Includes.h">
@@ -45,6 +48,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Reflective Injector.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Windows Hook.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
