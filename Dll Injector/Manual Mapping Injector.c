@@ -31,6 +31,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 	if (pFile == NULL) {
 		printf("[!] Failed to open the dll file \n");
 
+		CloseHandle(hProcess);
 		return FALSE;
 	}
 
@@ -44,6 +45,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 		printf("[!] File size is invalid \nNote: there is nothin else except PE headers \n");
 
 		fclose(pFile);
+		CloseHandle(hProcess);
 		return FALSE;
 	}
 
@@ -53,6 +55,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 		printf("[!] Failed to allocate memory for the dll data\n");
 		
 		fclose(pFile);
+		CloseHandle(hProcess);
 		return FALSE;
 	}
 
@@ -60,6 +63,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 		printf("[!] Didnt success to read the dll content.\n");
 
 		fclose(pFile);
+		CloseHandle(hProcess);
 		return FALSE;
 	}
 	fclose(pFile);
@@ -71,6 +75,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 		printf("[!] Invalid executable(dll) file \nNote: there is no MZ signature at the start of the file\n");
 		
 		free(pSrcDllData);
+		CloseHandle(hProcess);
 		return FALSE;
 	}
 
@@ -82,6 +87,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 		printf("[!] Dll didnt compiled to 64 bit \nNote: compile it again to 64 bit (injector support only 64 bit)\n");
 
 		free(pSrcDllData);
+		CloseHandle(hProcess);
 		return FALSE;
 	}
 	
@@ -96,6 +102,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 			printf("[!] Failed to allocate memory in the target process \n");
 
 			free(pSrcDllData);
+			CloseHandle(hProcess);
 			return FALSE;
 		}
 	}
@@ -108,6 +115,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 
 			VirtualFreeEx(hProcess, pTargetAddr, 0, MEM_RELEASE);
 			free(pSrcDllData);
+			CloseHandle(hProcess);
 			return FALSE;
 		}
 	}
@@ -120,6 +128,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 
 		free(pSrcDllData);
 		VirtualFreeEx(hProcess, pTargetAddr, 0, MEM_RELEASE);
+		CloseHandle(hProcess);
 		return FALSE;
 	}
 
@@ -145,6 +154,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 		VirtualFreeEx(hProcess, loaderMemory, 0, MEM_RELEASE);
 		VirtualFreeEx(hProcess, pTargetAddr, 0, MEM_RELEASE);
 		free(pSrcDllData);
+		CloseHandle(hProcess);
 		return FALSE;
 	}
 
@@ -154,6 +164,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 	VirtualFreeEx(hProcess, loaderMemory, 0, MEM_RELEASE);
 	VirtualFreeEx(hProcess, pTargetAddr, 0, MEM_RELEASE);
 	free(pSrcDllData);
+	CloseHandle(hProcess);
 	return TRUE;
 }
 
