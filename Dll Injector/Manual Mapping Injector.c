@@ -107,7 +107,17 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 		}
 	}
 
-	// writing sections to memory (target process)
+	// writing the headers into the process memory
+	if (!WriteProcessMemory(hProcess, pTargetAddr, pSrcDllData, pOldNtHeader->OptionalHeader.SizeOfHeaders, NULL)) {
+		printf("[!] Failed to write the headers into the process\n");
+
+		VirtualFreeEx(hProcess, pTargetAddr, 0, MEM_RELEASE);
+		free(pSrcDllData);
+		CloseHandle(hProcess);
+		return FALSE;
+	}
+
+	// writing sections into the process memory
 	pSectionHeader = IMAGE_FIRST_SECTION(pOldNtHeader);
 	for (i = 0; i != pOldFileHeader->NumberOfSections; i++, pSectionHeader++) {
 		if (!WriteProcessMemory(hProcess, pTargetAddr + pSectionHeader->VirtualAddress, pSrcDllData + pSectionHeader->PointerToRawData, pSectionHeader->SizeOfRawData, NULL)) {
@@ -144,7 +154,6 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 
 	// write params and loader into target process memory
 	WriteProcessMemory(hProcess, loaderMemory, &loaderParams, sizeof(loaderData), NULL);
-	// fix : argument pass an instruction and dosent copy whole shellcode
 	WriteProcessMemory(hProcess, (PVOID)((loaderData*)loaderMemory + 1), loaderShellcode, PAGE_SIZE - sizeof(loaderParams), NULL);
 
 	hThread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)((loaderData*)loaderMemory + 1), loaderMemory, 0, NULL);
@@ -211,13 +220,15 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 		}
 	}
 
+	__debugbreak();
 	// resolving dll imports
-	pImportDesc = loaderParams->ImportDirectory;
-
+	// fix : TODO : solve the imports res issue
 	if (loaderParams->NtHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].Size) {
+		pImportDesc = loaderParams->ImportDirectory;
+
 		while (pImportDesc->Characteristics) {
-			FirstThunk = (PIMAGE_THUNK_DATA)((LPBYTE)loaderParams->ImageBase + pImportDesc->FirstThunk);
 			OriginalFirstThunk = (PIMAGE_THUNK_DATA)((LPBYTE)loaderParams->ImageBase + pImportDesc->OriginalFirstThunk);
+			FirstThunk = (PIMAGE_THUNK_DATA)((LPBYTE)loaderParams->ImageBase + pImportDesc->FirstThunk);
 
 			hMod = loaderParams->fnLoadLibraryA((LPCSTR)loaderParams->ImageBase + pImportDesc->Name);
 			if (!hMod) {
@@ -232,8 +243,7 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 					}
 
 					FirstThunk->u1.Function = modFunc;
-				}
-				else {
+				} else {
 					pImportByName = (PIMAGE_IMPORT_BY_NAME)((LPBYTE)loaderParams->ImageBase + OriginalFirstThunk->u1.AddressOfData);
 					modFunc = (DWORD)loaderParams->fnGetProcAddress(hMod, (LPCSTR)pImportByName->Name);
 					if (!modFunc) {

@@ -7,8 +7,7 @@ int main(int argc, char **argv) {
 	int		injectionStatus						= 0;
 	int		injectionMethod						= 0;
 
-	/* -- arguments validaition -- */
-
+	// args validation
 	if (argc < 2) {
 		printf("[!] Usage: DllInjector.exe <process_name> <dll_path>\n");
 		return 0;
@@ -31,8 +30,7 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
-	/* -- Get processId for inject dll  -- */
-
+	// getting process ID
 	printf("[&] Searching Process : %s\n", processName);
 	processId = getPidByProcessName(processName);
 	if (processId == FALSE) {
@@ -41,8 +39,7 @@ int main(int argc, char **argv) {
 	}
 	printf("[^] ProcessID Found : %d\n", processId);
 	
-	/* -- Injection methods -- */
-
+	// injection method
 	printf("[$] Enter injection method: \n\t1. Simple injection \n\t2. Manual mapping injection \n\t3. Reflective injection \n\tYour choice: ");
 	scanf("%d", &injectionMethod);
 

@@ -6,7 +6,7 @@ This project focuses on dll injection with bunch of diffrent methods.
 The injector has a friendly UI and divided into two parts: User-mode injector and Kernel-mode injector (Driver) 
 
 ## Remark
-- injector support only 64 bit dll \ processes
+- Injector supports only 64 bit dll \ processes - build only in release mode (or turn off incremental - /INCREMENTAL:NO)
 
 ## Features
 - [x] Simple injection method 
@@ -17,4 +17,4 @@ The injector has a friendly UI and divided into two parts: User-mode injector an
 - [ ] Other methods of injection
 
 ## Screenshots
-(..)
+TBD
