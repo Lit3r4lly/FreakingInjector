@@ -220,7 +220,6 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 		}
 	}
 
-	__debugbreak();
 	// resolving dll imports
 	// fix : TODO : solve the imports res issue
 	if (loaderParams->NtHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].Size) {
@@ -242,6 +241,8 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 						return FALSE;
 					}
 
+					// cc for following after the imports res stuff
+					__debugbreak();
 					FirstThunk->u1.Function = modFunc;
 				} else {
 					pImportByName = (PIMAGE_IMPORT_BY_NAME)((LPBYTE)loaderParams->ImageBase + OriginalFirstThunk->u1.AddressOfData);
@@ -250,6 +251,8 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 						return FALSE;
 					}
 
+					// cc for following after the imports res stuff
+					__debugbreak();
 					FirstThunk->u1.Function = modFunc;
 				}
 				OriginalFirstThunk++;
@@ -259,6 +262,7 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 		}
 	}
 
+	// cc for getting into the loaded dll with the debugger (windbg)
 	__debugbreak();
 	if (loaderParams->NtHeaders->OptionalHeader.AddressOfEntryPoint) {
 		entryPointOfDll = (dllmain)((LPBYTE)loaderParams->ImageBase + loaderParams->NtHeaders->OptionalHeader.AddressOfEntryPoint);
