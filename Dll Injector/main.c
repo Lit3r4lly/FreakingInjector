@@ -8,7 +8,7 @@ int main(int argc, char **argv) {
 	int		injectionMethod						= 0;
 
 	// args validation
-	if (argc < 2) {
+	if (argc < 3) {
 		printf("[!] Usage: DllInjector.exe <process_name> <dll_path>\n");
 		return 0;
 	}
