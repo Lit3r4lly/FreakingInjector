@@ -2,7 +2,7 @@
 
 int main(int argc, char **argv) {
 	char	processName[MAX_PROCESS_NAME_LEN]	= { 0 };
-	char	dllPath[MAX_DLL_PATH_LEN]		= { 0 };
+	char	dllPath[MAX_DLL_PATH_LEN]			= { 0 };
 	int		processId							= 0;
 	int		injectionStatus						= 0;
 	int		injectionMethod						= 0;

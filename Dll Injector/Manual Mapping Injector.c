@@ -1,23 +1,23 @@
 #include "Includes.h"
 
 int manualMappingInjectionMethod(int processId, char* dllPath) {
-	BYTE					*pSrcDllData			= NULL;
-	IMAGE_DOS_HEADER		*pDosHeader				= NULL;
-	IMAGE_NT_HEADERS		*pOldNtHeader			= NULL;
-	IMAGE_OPTIONAL_HEADER	*pOldOptHeader			= NULL;
-	IMAGE_FILE_HEADER		*pOldFileHeader			= NULL;
-	IMAGE_SECTION_HEADER	*pSectionHeader			= NULL;
-	BYTE					*pTargetAddr			= NULL;
+	BYTE *pSrcDllData						= NULL;
+	IMAGE_DOS_HEADER *pDosHeader			= NULL;
+	IMAGE_NT_HEADERS *pOldNtHeader			= NULL;
+	IMAGE_OPTIONAL_HEADER *pOldOptHeader	= NULL;
+	IMAGE_FILE_HEADER *pOldFileHeader		= NULL;
+	IMAGE_SECTION_HEADER *pSectionHeader	= NULL;
+	BYTE *pTargetAddr						= NULL;
 
-	FILE		*pFile			= NULL;
-	long		fileSize		= 0;
+	FILE *pFile			= NULL;
+	long fileSize		= 0;
 
-	unsigned int i = 0;
-	HANDLE hProcess = NULL;
-	LPTHREAD_START_ROUTINE entryPoint = 0;
+	unsigned int i						= 0;
+	HANDLE hProcess						= NULL;
+	LPTHREAD_START_ROUTINE entryPoint	= 0;
 
-	loaderData loaderParams = { 0 };
-	PVOID loaderMemory = 0;
+	loaderData loaderParams		= { 0 };
+	PVOID loaderMemory			= 0;
 
 	HANDLE hThread = NULL;
 
@@ -27,7 +27,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 		return FALSE;
 	}
 
-	pFile = fopen("C:\\check\\DllToInjectIn.dll", "rb");
+	pFile = fopen(dllPath, "rb");
 	if (pFile == NULL) {
 		printf("[!] Failed to open the dll file \n");
 
@@ -222,44 +222,36 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 
 	// resolving dll imports
 	// fix : TODO : solve the imports res issue
-	if (loaderParams->NtHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].Size) {
-		pImportDesc = loaderParams->ImportDirectory;
+	pImportDesc = loaderParams->ImportDirectory;
 
-		while (pImportDesc->Characteristics) {
-			OriginalFirstThunk = (PIMAGE_THUNK_DATA)((LPBYTE)loaderParams->ImageBase + pImportDesc->OriginalFirstThunk);
-			FirstThunk = (PIMAGE_THUNK_DATA)((LPBYTE)loaderParams->ImageBase + pImportDesc->FirstThunk);
+	while (pImportDesc->Characteristics) {
+		OriginalFirstThunk = (PIMAGE_THUNK_DATA)((LPBYTE)loaderParams->ImageBase + pImportDesc->OriginalFirstThunk);
+		FirstThunk = (PIMAGE_THUNK_DATA)((LPBYTE)loaderParams->ImageBase + pImportDesc->FirstThunk);
 
-			hMod = loaderParams->fnLoadLibraryA((LPCSTR)loaderParams->ImageBase + pImportDesc->Name);
-			if (!hMod) {
+		hMod = loaderParams->fnLoadLibraryA((LPCSTR)loaderParams->ImageBase + pImportDesc->Name);
+		if (!hMod) {
+			return FALSE;
+		}
+
+		while (OriginalFirstThunk->u1.AddressOfData) {
+			if (OriginalFirstThunk->u1.Ordinal & IMAGE_ORDINAL_FLAG) {
+				modFunc = (DWORD)loaderParams->fnGetProcAddress(hMod, (LPCSTR)(OriginalFirstThunk->u1.Ordinal & 0xFFFF));
+			} else {
+				pImportByName = (PIMAGE_IMPORT_BY_NAME)((LPBYTE)loaderParams->ImageBase + OriginalFirstThunk->u1.AddressOfData);
+				modFunc = (DWORD)loaderParams->fnGetProcAddress(hMod, (LPCSTR)pImportByName->Name);
+			}
+
+			// cc for following after the imports res stuff
+			__debugbreak();
+			if (!modFunc) {
 				return FALSE;
 			}
-
-			while (OriginalFirstThunk->u1.AddressOfData) {
-				if (OriginalFirstThunk->u1.Ordinal & IMAGE_ORDINAL_FLAG) {
-					modFunc = (DWORD)loaderParams->fnGetProcAddress(hMod, (LPCSTR)(OriginalFirstThunk->u1.Ordinal & 0xFFFF));
-					if (!modFunc) {
-						return FALSE;
-					}
-
-					// cc for following after the imports res stuff
-					__debugbreak();
-					FirstThunk->u1.Function = modFunc;
-				} else {
-					pImportByName = (PIMAGE_IMPORT_BY_NAME)((LPBYTE)loaderParams->ImageBase + OriginalFirstThunk->u1.AddressOfData);
-					modFunc = (DWORD)loaderParams->fnGetProcAddress(hMod, (LPCSTR)pImportByName->Name);
-					if (!modFunc) {
-						return FALSE;
-					}
-
-					// cc for following after the imports res stuff
-					__debugbreak();
-					FirstThunk->u1.Function = modFunc;
-				}
-				OriginalFirstThunk++;
-				FirstThunk++;
-			}
-			pImportDesc++;
+			FirstThunk->u1.Function = modFunc;
+				
+			OriginalFirstThunk++;
+			FirstThunk++;
 		}
+		pImportDesc++;
 	}
 
 	// cc for getting into the loaded dll with the debugger (windbg)
