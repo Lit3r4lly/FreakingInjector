@@ -178,22 +178,22 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 }
 
 DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
-	unsigned int	i						= 0;
-	unsigned int	amountOfEntries			= 0;
-	PWORD			pRelativeRelocInfo		= 0;
-	PDWORD			pRva					= 0;
+	unsigned int i					= 0;
+	unsigned int amountOfEntries	= 0;
+	PWORD pRelativeRelocInfo		= 0;
+	PDWORD pRva						= 0;
 
-	PIMAGE_BASE_RELOCATION		 pBaseReloc			= loaderParams->BaseReloc;
-	PIMAGE_IMPORT_DESCRIPTOR	 pImportDesc		= NULL;
+	PIMAGE_BASE_RELOCATION pBaseReloc		= loaderParams->BaseReloc;
+	PIMAGE_IMPORT_DESCRIPTOR pImportDesc	= NULL;
 
 	// checks if needs a relocation (if the allocation made successfuly in the image base, flex on your friends)
 	DWORD deltaOfBase = (DWORD)((LPBYTE)loaderParams->ImageBase - loaderParams->NtHeaders->OptionalHeader.ImageBase);
 
-	PIMAGE_THUNK_DATA FirstThunk = NULL;
-	PIMAGE_THUNK_DATA OriginalFirstThunk = NULL;
-	PIMAGE_IMPORT_BY_NAME pImportByName = NULL;
-	HMODULE hMod = NULL;
-	DWORD modFunc = 0;
+	PIMAGE_THUNK_DATA FirstThunk			= NULL;
+	PIMAGE_THUNK_DATA OriginalFirstThunk	= NULL;
+	PIMAGE_IMPORT_BY_NAME pImportByName		= NULL;
+	HMODULE hMod							= NULL;
+	DWORD modFunc							= 0;
 
 	dllmain entryPointOfDll = 0;
 
@@ -235,6 +235,7 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 
 		while (OriginalFirstThunk->u1.AddressOfData) {
 			if (OriginalFirstThunk->u1.Ordinal & IMAGE_ORDINAL_FLAG) {
+				__debugbreak();
 				modFunc = (DWORD)loaderParams->fnGetProcAddress(hMod, (LPCSTR)(OriginalFirstThunk->u1.Ordinal & 0xFFFF));
 			} else {
 				pImportByName = (PIMAGE_IMPORT_BY_NAME)((LPBYTE)loaderParams->ImageBase + OriginalFirstThunk->u1.AddressOfData);
@@ -242,12 +243,12 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 			}
 
 			// cc for following after the imports res stuff
-			__debugbreak();
+			//__debugbreak();
 			if (!modFunc) {
 				return FALSE;
 			}
 			FirstThunk->u1.Function = modFunc;
-				
+			
 			OriginalFirstThunk++;
 			FirstThunk++;
 		}
