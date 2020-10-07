@@ -154,9 +154,10 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 
 	// write params and loader into target process memory
 	WriteProcessMemory(hProcess, loaderMemory, &loaderParams, sizeof(loaderData), NULL);
-	WriteProcessMemory(hProcess, (PVOID)((loaderData*)loaderMemory + 1), loaderShellcode, PAGE_SIZE - sizeof(loaderParams), NULL);
+	WriteProcessMemory(hProcess, (PVOID)((loaderData*)loaderMemory + 1), loaderShellcode, (DWORD)(stub) - (DWORD)(loaderShellcode), NULL);
 
 	hThread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)((loaderData*)loaderMemory + 1), loaderMemory, 0, NULL);
+
 	if (hThread == NULL) {
 		printf("[!] Creating remote thread failed \n");
 
@@ -169,13 +170,14 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 
 	WaitForSingleObject(hThread, INFINITE);
 
-	CloseHandle(hThread);
+	free(pSrcDllData);
 	VirtualFreeEx(hProcess, loaderMemory, 0, MEM_RELEASE);
 	VirtualFreeEx(hProcess, pTargetAddr, 0, MEM_RELEASE);
-	free(pSrcDllData);
+	CloseHandle(hThread);
 	CloseHandle(hProcess);
 	return TRUE;
 }
+
 
 DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 	unsigned int i					= 0;
@@ -186,7 +188,6 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 	PIMAGE_BASE_RELOCATION pBaseReloc		= loaderParams->BaseReloc;
 	PIMAGE_IMPORT_DESCRIPTOR pImportDesc	= NULL;
 
-	// checks if needs a relocation (if the allocation made successfuly in the image base, flex on your friends)
 	DWORD deltaOfBase = (DWORD)((LPBYTE)loaderParams->ImageBase - loaderParams->NtHeaders->OptionalHeader.ImageBase);
 
 	PIMAGE_THUNK_DATA FirstThunk			= NULL;
@@ -197,7 +198,8 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 
 	dllmain entryPointOfDll = 0;
 
-	// relocating (if needed) addresses
+	// reloc addresses if needed
+	// checks if needs a relocation (if the allocation made successfuly in the image base, flex on your friends)
 	if (deltaOfBase) {
 		if (loaderParams->NtHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].Size) {
 			while (pBaseReloc->VirtualAddress) {
@@ -235,7 +237,6 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 
 		while (OriginalFirstThunk->u1.AddressOfData) {
 			if (OriginalFirstThunk->u1.Ordinal & IMAGE_ORDINAL_FLAG) {
-				__debugbreak();
 				modFunc = (DWORD)loaderParams->fnGetProcAddress(hMod, (LPCSTR)(OriginalFirstThunk->u1.Ordinal & 0xFFFF));
 			} else {
 				pImportByName = (PIMAGE_IMPORT_BY_NAME)((LPBYTE)loaderParams->ImageBase + OriginalFirstThunk->u1.AddressOfData);
@@ -252,7 +253,7 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 			OriginalFirstThunk++;
 			FirstThunk++;
 		}
-		pImportDesc++;
+		pImportDesc++;	
 	}
 
 	// cc for getting into the loaded dll with the debugger (windbg)
@@ -263,4 +264,9 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 	}
 
 	return TRUE;
+}
+
+DWORD __stdcall stub()
+{
+	return 0;
 }
