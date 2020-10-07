@@ -154,7 +154,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 
 	// write params and loader into target process memory
 	WriteProcessMemory(hProcess, loaderMemory, &loaderParams, sizeof(loaderData), NULL);
-	WriteProcessMemory(hProcess, (PVOID)((loaderData*)loaderMemory + 1), loaderShellcode, (DWORD)(stub) - (DWORD)(loaderShellcode), NULL);
+	WriteProcessMemory(hProcess, (PVOID)((loaderData*)loaderMemory + 1), loaderShellcode, PAGE_SIZE - sizeof(loaderParams), NULL);
 
 	hThread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)((loaderData*)loaderMemory + 1), loaderMemory, 0, NULL);
 
@@ -264,9 +264,4 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 	}
 
 	return TRUE;
-}
-
-DWORD __stdcall stub()
-{
-	return 0;
 }

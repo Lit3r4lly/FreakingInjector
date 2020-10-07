@@ -21,6 +21,5 @@ typedef struct loaderData
 
 } loaderData;
 
-DWORD __stdcall stub();
 int manualMappingInjectionMethod(int processId, char* dllPath);
 DWORD __stdcall loaderShellcode(loaderData* loaderParams);
