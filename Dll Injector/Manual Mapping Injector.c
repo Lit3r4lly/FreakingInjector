@@ -9,66 +9,21 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 	IMAGE_SECTION_HEADER *pSectionHeader	= NULL;
 	BYTE *pTargetAddr						= NULL;
 
-	FILE *pFile			= NULL;
-	long fileSize		= 0;
-
 	unsigned int i						= 0;
 	HANDLE hProcess						= NULL;
 	LPTHREAD_START_ROUTINE entryPoint	= 0;
 
-	loaderData loaderParams		= { 0 };
-	PVOID loaderMemory			= 0;
+	unsigned int loaderShellcodeSize	= 0;
+	loaderData loaderParams				= { 0 };
+	PVOID loaderMemory					= 0;
 
 	HANDLE hThread = NULL;
 
-	hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
-	if (hProcess == NULL) {
-		// failed to create handle with the process
-		return FALSE;
-	}
-
-	pFile = fopen(dllPath, "rb");
-	if (pFile == NULL) {
-		printf("[!] Failed to open the dll file \n");
-
-		CloseHandle(hProcess);
-		return FALSE;
-	}
-
-	// getting the file size (classic c moment)
-	fseek(pFile, 0, SEEK_END);
-	fileSize = ftell(pFile);
-	fseek(pFile, 0, SEEK_SET);
-
-	// if there is nothing except PE headers
-	if (fileSize < PAGE_SIZE) {
-		printf("[!] File size is invalid \nNote: there is nothin else except PE headers \n");
-
-		fclose(pFile);
-		CloseHandle(hProcess);
-		return FALSE;
-	}
-
-	// reading the dll file into memory for analysis
-	pSrcDllData = (BYTE*)malloc(fileSize * sizeof(BYTE));
-	if (pSrcDllData == NULL) {
-		printf("[!] Failed to allocate memory for the dll data\n");
-		
-		fclose(pFile);
-		CloseHandle(hProcess);
-		return FALSE;
-	}
-
-	if (!fread(pSrcDllData, 1, fileSize, pFile) ) {
-		printf("[!] Didnt success to read the dll content.\n");
-
-		fclose(pFile);
-		CloseHandle(hProcess);
-		return FALSE;
-	}
-	fclose(pFile);
-
 	// starting analysis the dll
+	pSrcDllData = getDllContent(dllPath);
+	if (!pSrcDllData) {
+
+	}
 
 	pDosHeader = (PIMAGE_DOS_HEADER)pSrcDllData;
 	if (pDosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
@@ -91,6 +46,12 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 		return FALSE;
 	}
 	
+	hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
+	if (hProcess == NULL) {
+		// failed to create handle with the process
+		return FALSE;
+	}
+
 	// allocating memory in the target process for writing the dll
 	// first trying to allocate in the image base of the process for unusing rva and some extra offsets
 	pTargetAddr = (BYTE*)VirtualAllocEx(hProcess, (void*)pOldOptHeader->ImageBase, pOldOptHeader->SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
@@ -130,18 +91,6 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 		}
 	}
 
-	// allocate memory for the loader (params + code)
-	// fix: allocate dynamically
-	loaderMemory = VirtualAllocEx(hProcess, NULL, PAGE_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-	if (loaderMemory == NULL) {
-		printf("[!] Failed to allocate memory in the target process for the loader \n");
-
-		free(pSrcDllData);
-		VirtualFreeEx(hProcess, pTargetAddr, 0, MEM_RELEASE);
-		CloseHandle(hProcess);
-		return FALSE;
-	}
-
 	// setting loader params for starting relocating and resolving iat
 	loaderParams.ImageBase = pTargetAddr;
 	loaderParams.NtHeaders = (PIMAGE_NT_HEADERS)(pTargetAddr + pDosHeader->e_lfanew);
@@ -152,9 +101,23 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 	loaderParams.fnLoadLibraryA = LoadLibraryA;
 	loaderParams.fnGetProcAddress = GetProcAddress;
 
+	// getting the loader shellcode size
+	loaderShellcodeSize = (unsigned int)stubFunction - (unsigned int)loaderShellcode;
+
+	// allocate memory for the loader (params + code)
+	loaderMemory = VirtualAllocEx(hProcess, NULL, loaderShellcodeSize + sizeof(loaderData), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+	if (loaderMemory == NULL) {
+		printf("[!] Failed to allocate memory in the target process for the loader \n");
+
+		free(pSrcDllData);
+		VirtualFreeEx(hProcess, pTargetAddr, 0, MEM_RELEASE);
+		CloseHandle(hProcess);
+		return FALSE;
+	}
+
 	// write params and loader into target process memory
 	WriteProcessMemory(hProcess, loaderMemory, &loaderParams, sizeof(loaderData), NULL);
-	WriteProcessMemory(hProcess, (void*)((loaderData*)loaderMemory + 1), loaderShellcode, PAGE_SIZE - sizeof(loaderParams), NULL);
+	WriteProcessMemory(hProcess, (void*)((loaderData*)loaderMemory + 1), loaderShellcode, loaderShellcodeSize, NULL);
 
 	hThread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)((loaderData*)loaderMemory + 1), loaderMemory, 0, NULL);
 
@@ -176,6 +139,51 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 	CloseHandle(hThread);
 	CloseHandle(hProcess);
 	return TRUE;
+}
+
+BYTE* getDllContent(char* dllPath) {
+	BYTE* pSrcDllData = NULL;
+	FILE* pFile = NULL;
+	long fileSize = 0;
+
+	pFile = fopen(dllPath, "rb");
+	if (pFile == NULL) {
+		printf("[!] Failed to open the dll file \n");
+		return FALSE;
+	}
+
+	// getting the file size (classic c moment)
+	fseek(pFile, 0, SEEK_END);
+	fileSize = ftell(pFile);
+	fseek(pFile, 0, SEEK_SET);
+
+	// if there is nothing except PE headers
+	if (fileSize < PAGE_SIZE) {
+		printf("[!] File size is invalid \nNote: there is nothin else except PE headers \n");
+
+		fclose(pFile);
+		return FALSE;
+	}
+
+	// reading the dll file into memory for analysis
+	pSrcDllData = (BYTE*)malloc(fileSize * sizeof(BYTE));
+	if (pSrcDllData == NULL) {
+		printf("[!] Failed to allocate memory for the dll data\n");
+
+		fclose(pFile);
+		return FALSE;
+	}
+
+	if (!fread(pSrcDllData, 1, fileSize, pFile)) {
+		printf("[!] Didnt success to read the dll content.\n");
+
+		free(pSrcDllData);
+		fclose(pFile);
+		return FALSE;
+	}
+
+	fclose(pFile);
+	return pSrcDllData;
 }
 
 DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
@@ -259,3 +267,5 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 
 	return TRUE;
 }
+
+void stubFunction() { }
