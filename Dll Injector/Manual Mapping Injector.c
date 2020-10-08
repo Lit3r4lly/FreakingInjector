@@ -154,7 +154,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 
 	// write params and loader into target process memory
 	WriteProcessMemory(hProcess, loaderMemory, &loaderParams, sizeof(loaderData), NULL);
-	WriteProcessMemory(hProcess, (PVOID)((loaderData*)loaderMemory + 1), loaderShellcode, PAGE_SIZE - sizeof(loaderParams), NULL);
+	WriteProcessMemory(hProcess, (void*)((loaderData*)loaderMemory + 1), loaderShellcode, PAGE_SIZE - sizeof(loaderParams), NULL);
 
 	hThread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)((loaderData*)loaderMemory + 1), loaderMemory, 0, NULL);
 
@@ -178,7 +178,6 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 	return TRUE;
 }
 
-
 DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 	unsigned int i					= 0;
 	unsigned int amountOfEntries	= 0;
@@ -194,7 +193,7 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 	PIMAGE_THUNK_DATA OriginalFirstThunk	= NULL;
 	PIMAGE_IMPORT_BY_NAME pImportByName		= NULL;
 	HMODULE hMod							= NULL;
-	DWORD modFunc							= 0;
+	void* modFunc							= 0;
 
 	dllmain entryPointOfDll = 0;
 
@@ -223,7 +222,6 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 	}
 
 	// resolving dll imports
-	// fix : TODO : solve the imports res issue
 	pImportDesc = loaderParams->ImportDirectory;
 
 	while (pImportDesc->Characteristics) {
@@ -237,27 +235,23 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 
 		while (OriginalFirstThunk->u1.AddressOfData) {
 			if (OriginalFirstThunk->u1.Ordinal & IMAGE_ORDINAL_FLAG) {
-				modFunc = (DWORD)loaderParams->fnGetProcAddress(hMod, (LPCSTR)(OriginalFirstThunk->u1.Ordinal & 0xFFFF));
+				modFunc = (void*)loaderParams->fnGetProcAddress(hMod, (LPCSTR)(OriginalFirstThunk->u1.Ordinal & 0xFFFF));
 			} else {
 				pImportByName = (PIMAGE_IMPORT_BY_NAME)((LPBYTE)loaderParams->ImageBase + OriginalFirstThunk->u1.AddressOfData);
-				modFunc = (DWORD)loaderParams->fnGetProcAddress(hMod, (LPCSTR)pImportByName->Name);
+				modFunc = (void*)loaderParams->fnGetProcAddress(hMod, (LPCSTR)pImportByName->Name);
 			}
 
-			// cc for following after the imports res stuff
-			//__debugbreak();
 			if (!modFunc) {
 				return FALSE;
 			}
 			FirstThunk->u1.Function = modFunc;
-			
+
 			OriginalFirstThunk++;
 			FirstThunk++;
 		}
 		pImportDesc++;	
 	}
 
-	// cc for getting into the loaded dll with the debugger (windbg)
-	__debugbreak();
 	if (loaderParams->NtHeaders->OptionalHeader.AddressOfEntryPoint) {
 		entryPointOfDll = (dllmain)((LPBYTE)loaderParams->ImageBase + loaderParams->NtHeaders->OptionalHeader.AddressOfEntryPoint);
 		entryPointOfDll((HMODULE)loaderParams->ImageBase, DLL_PROCESS_ATTACH, NULL);

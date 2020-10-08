@@ -12,7 +12,7 @@ The injector has a friendly UI and divided into two parts: User-mode injector an
 
 ## Features
 - [x] Simple injection method 
-- [ ] Manual mapping injection method
+- [x] Manual mapping injection method
 - [ ] Reflective injection method
 - [ ] GUI
 - [ ] Kernel mode injector (Driver)
