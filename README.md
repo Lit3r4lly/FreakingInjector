@@ -1,6 +1,3 @@
-# IN-PROGRESS (didnt finished yet)
-## fully readme will be added when the injector will be finished
-
 # Dllinjector
 This project focuses on dll injection with bunch of diffrent methods.
 The injector has a friendly UI and divided into two parts: User-mode injector and Kernel-mode injector (Driver) 
