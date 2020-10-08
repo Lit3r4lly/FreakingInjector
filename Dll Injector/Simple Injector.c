@@ -1,5 +1,19 @@
 #include "Includes.h"
 
+/*
+	Copyright (c) 2020 Ori
+*/
+
+/*
+	This function making some very simple dll injection method
+	In:
+		processId - the processID of the target process
+		dllPath - the path of the injected dll
+
+	Out:
+		success / failure (by TRUE\\FALSE codes)
+*/
+
 int simpleInjectionMethod(int processId, char* dllPath) {
 	HANDLE hProcess			= 0;
 	HANDLE hThread			= 0;

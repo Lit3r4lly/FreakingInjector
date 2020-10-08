@@ -1,4 +1,26 @@
 #include "Includes.h"
+/*
+	Copyright (c) 2020 Ori
+
+	This injection method working on manual mapping injection,
+	manual mapping injection is a dll injection method that inject by her self and map the pe headers of the dll.
+	Manual mapping has couple of levels: 
+	1) Open the dll
+	2) Parse the dll
+	3) Write headers and sections to the process memory
+	4) Write shellcode that has the following: relocations and import resolutions
+	5) Create remote thread that will trigger the shelcode
+*/
+
+/*
+	This function considered as the "main" function of the injection method
+	In: 
+		processID - the processID of the target process
+		dllPath - the path of the dll that should injected
+
+	Out:
+		success / failure (by TRUE\\FALSE codes)
+*/
 
 int manualMappingInjectionMethod(int processId, char* dllPath) {
 	BYTE *pSrcDllData						= NULL;
@@ -22,7 +44,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 	// starting analysis the dll
 	pSrcDllData = getDllContent(dllPath);
 	if (!pSrcDllData) {
-
+		return FALSE;
 	}
 
 	pDosHeader = (PIMAGE_DOS_HEADER)pSrcDllData;
@@ -30,7 +52,6 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 		printf("[!] Invalid executable(dll) file \nNote: there is no MZ signature at the start of the file\n");
 		
 		free(pSrcDllData);
-		CloseHandle(hProcess);
 		return FALSE;
 	}
 
@@ -42,7 +63,6 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 		printf("[!] Dll didnt compiled to 64 bit \nNote: compile it again to 64 bit (injector support only 64 bit)\n");
 
 		free(pSrcDllData);
-		CloseHandle(hProcess);
 		return FALSE;
 	}
 	
@@ -104,7 +124,7 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 	// getting the loader shellcode size
 	loaderShellcodeSize = (unsigned int)stubFunction - (unsigned int)loaderShellcode;
 
-	// allocate memory for the loader (params + code)
+	// allocate memory for the loader (params + shellcode)
 	loaderMemory = VirtualAllocEx(hProcess, NULL, loaderShellcodeSize + sizeof(loaderData), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 	if (loaderMemory == NULL) {
 		printf("[!] Failed to allocate memory in the target process for the loader \n");
@@ -140,6 +160,15 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 	CloseHandle(hProcess);
 	return TRUE;
 }
+
+/*
+	This function read the dll file content
+	In:
+		dllPath - the path of the injected dll
+
+	Out:
+		the dll file content \\ failure
+*/
 
 BYTE* getDllContent(char* dllPath) {
 	BYTE* pSrcDllData = NULL;
@@ -185,6 +214,15 @@ BYTE* getDllContent(char* dllPath) {
 	fclose(pFile);
 	return pSrcDllData;
 }
+
+/*
+	This function is the loader shellcode that make the most important things in the injection
+	In:
+		loaderParams - parameters structure for the loader (set in the main function)
+
+	Out:
+		returning to the remote thread some returned values from the dll
+*/
 
 DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 	unsigned int i					= 0;
@@ -264,8 +302,15 @@ DWORD __stdcall loaderShellcode(loaderData* loaderParams) {
 		entryPointOfDll = (dllmain)((LPBYTE)loaderParams->ImageBase + loaderParams->NtHeaders->OptionalHeader.AddressOfEntryPoint);
 		entryPointOfDll((HMODULE)loaderParams->ImageBase, DLL_PROCESS_ATTACH, NULL);
 	}
-
-	return TRUE;
 }
+
+/*
+	This function made for get function size (shellcode size)
+	In:
+		NULL
+
+	Out:
+		Null
+*/
 
 void stubFunction() { }

@@ -1,4 +1,14 @@
 #include "Includes.h"
+/*
+	Copyright (c) 2020 Ori
+	
+	This function finding processID by process name
+	In:
+		processName - the name of the target process
+
+	Out:
+		the processID of the target process
+*/
 
 int getPidByProcessName(char* processName) {
 	WCHAR			processImage[MAX_PROCESS_NAME_LEN]	= { 0 };
