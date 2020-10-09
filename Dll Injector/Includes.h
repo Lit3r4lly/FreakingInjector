@@ -19,7 +19,7 @@
 #define DLL_PATH 2
 #define ARGS_METHOD 3
 
-#define MAX_EXT_LEN 4
+#define MAX_EXT_LEN 5
 
 #define SIMPLE_INJECTION 1
 #define MANUAL_MAPPING_INJECTION 2
