@@ -27,6 +27,8 @@ The injector has a friendly UI and divided into two parts: User-mode injector an
         Method (1) - "FreakingInjector.exe" "548" "C:\Users\Maxim\myDll.dll" "1"  
         Method (2) - "FreakingInjector.exe" "Calculator.exe" "C:\Users\Maxim\myDll.dll" "2"  
 ```
+## Releases
+Check out the releases of the project [here](https://github.com/Lit3r4lly/Dllinjector/releases)
 
 ## Screenshots
 TBD
