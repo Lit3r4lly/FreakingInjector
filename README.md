@@ -4,8 +4,11 @@ The injector has a friendly UI and divided into two parts: User-mode injector an
 
 ## Remark
 - Injector supports only 64 bit dll \ processes
-- build only in release mode (or turn off incremental - /INCREMENTAL:NO) - incremental linking could make some jump thunks to handle relocations of functions \ pointers to new addresses
-- build file will be added
+- build only in release mode
+- if you decided to build in Debug Mode, you should make some changes in the project properties:  
+  * Turn off incremental - /INCREMENTAL:NO) - incremental linking could make some jump thunks to handle relocations of functions \ pointers to new addresses  
+  * Turn off Jmc Debugging - could make an calls in the loader shellcode which will cause access violatins
+- build file added
 
 ## Features
 - [x] Simple injection method 
