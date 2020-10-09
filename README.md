@@ -8,7 +8,6 @@ The injector has a friendly UI and divided into two parts: User-mode injector an
 - if you decided to build in Debug Mode, you should make some changes in the project properties:  
   * Turn off incremental - /INCREMENTAL:NO) - incremental linking could make some jump thunks to handle relocations of functions \ pointers to new addresses  
   * Turn off Jmc Debugging - could make an calls in the loader shellcode which will cause access violatins
-- build file added
 
 ## Features
 - [x] Simple injection method 
@@ -29,6 +28,9 @@ The injector has a friendly UI and divided into two parts: User-mode injector an
 ```
 ## Releases
 Check out the releases of the project [here](https://github.com/Lit3r4lly/Dllinjector/releases)
+
+## Build
+FreakingInjector can be built with Visual Studio 2019, opening the .sin file and make a build (Ctrl+Shift+B) in Release Mode or Debug Mode, whatever u want to.
 
 ## Screenshots
 TBD
