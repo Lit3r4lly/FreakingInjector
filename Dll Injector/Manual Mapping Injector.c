@@ -171,9 +171,9 @@ int manualMappingInjectionMethod(int processId, char* dllPath) {
 */
 
 BYTE* getDllContent(char* dllPath) {
-	BYTE* pSrcDllData = NULL;
-	FILE* pFile = NULL;
-	long fileSize = 0;
+	BYTE* pSrcDllData		= NULL;
+	FILE* pFile				= NULL;
+	long fileSize			= 0;
 
 	pFile = fopen(dllPath, "rb");
 	if (pFile == NULL) {
