@@ -13,7 +13,7 @@
 int getPidByProcessName(char* processName) {
 	WCHAR processImage[MAX_PROCESS_NAME_LEN] = { 0 };
 	DWORD processId = 0;
-	PROCESSENTRY32 ProcessEntry = { 0 };
+	PROCESSENTRY32 processEntry = { 0 };
 	HANDLE hSnapshot = NULL;
 
 	swprintf(processImage, MAX_PROCESS_NAME_LEN, L"%hs", processName);
@@ -24,12 +24,12 @@ int getPidByProcessName(char* processName) {
 		return FALSE;
 	}
 
-	ProcessEntry.dwSize = sizeof(PROCESSENTRY32);
-	if (Process32First(hSnapshot, &ProcessEntry)) {
-		if (!wcscmp(ProcessEntry.szExeFile, processImage)) {
+	processEntry.dwSize = sizeof(PROCESSENTRY32);
+	if (Process32First(hSnapshot, &processEntry)) {
+		if (!wcscmp(processEntry.szExeFile, processImage)) {
 			CloseHandle(hSnapshot);
 
-			processId = ProcessEntry.th32ProcessID;
+			processId = processEntry.th32ProcessID;
 			return processId;
 		}
 	}
@@ -38,14 +38,15 @@ int getPidByProcessName(char* processName) {
 		return FALSE;
 	}
 
-	while (Process32Next(hSnapshot, &ProcessEntry)) {
-		if (!wcscmp(ProcessEntry.szExeFile, processImage)) {
+	while (Process32Next(hSnapshot, &processEntry)) {
+		if (!wcscmp(processEntry.szExeFile, processImage)) {
 			CloseHandle(hSnapshot);
 
-			processId = ProcessEntry.th32ProcessID;
+			processId = processEntry.th32ProcessID;
 			return processId;
 		}
 	}
 
+	CloseHandle(hSnapshot);
 	return FALSE;
 }
