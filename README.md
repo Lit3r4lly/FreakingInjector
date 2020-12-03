@@ -30,11 +30,14 @@ The injector has a friendly UI and divided into two parts: User-mode injector an
 Check out the releases of the project [here](https://github.com/Lit3r4lly/Dllinjector/releases)
 
 ## Build
-FreakingInjector can be built with Visual Studio 2019, opening the .sin file and make a build (Ctrl+Shift+B) in Release Mode or Debug Mode, whatever u want to (x64)
+
+FreakingInjector can be built with Visual Studio 2019, by opening the .sln file and build the project (Ctrl+Shift+B) in a Release Mode or Debug Mode, whatever you want to (x64)
+
+
+## Issues
+
+If you have any issues with this tool, you can ping me on Discord: Lit3r4lly#8336  
+If you have some critical bug, open an PR/Issue ticket
 
 ## Screenshots
 TBD
-
-## Issues
-If you have any issues with this tool, you can ping me on Discord: Lit3r4lly#8336  
-If you have some critical bug, open an PR/Issue ticket
